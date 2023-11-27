@@ -48,5 +48,9 @@ with st.form("sql_connection_form"):
         "password": password  # Be cautious with storing passwords in plain text
     }
 
-    # Update the secrets file
-    update_secrets_file(secrets_data)
+#Initialize states
+state_names = [hugging_face_token,openai_token,db_type,host,port,database,]
+
+
+# Update the secrets file
+# update_secrets_file(secrets_data)

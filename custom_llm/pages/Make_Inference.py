@@ -2,26 +2,38 @@ import streamlit as st
 
 st.markdown("# Make Inference")
 
-model_name = st.sidebar.selectbox(
+st.sidebar.title("Choose Model to Download")
+selected_model = st.sidebar.selectbox(
     "Select a model to download",
-    ('m1', 'm2', 'm3','custom',"None")
+    ('meta-llama/Llama-2-7b-chat-hf', 'adept/fuyu-8b', '01-ai/Yi-34B','mistralai/Mistral-7B-v0.1','Custom','-')
 )
 
-if model_name == "custom":
-    model_name = st.text_input("Custom model name", key="custom_model_input")
+if selected_model == "Custom":
+    custom_model = st.text_input("Custom model name", key="custom_model_input")
+    st.session_state['model_name'] = custom_model
+else:
+    st.session_state['model_name'] = selected_model
 
+st.sidebar.title("Choose Model to Use")
 load_model_name = st.sidebar.selectbox(
-    "Load a model to use",
-    ('m1', 'm2', 'm3')
+    "Choose a model to use",
+    ('meta-llama/Llama-2-7b-chat-hf',)
 )
-import streamlit as st
+if selected_model == "-":
+    st.session_state['load_model_name'] = load_model_name
+
 
 txt = st.text_area(
     "Text to analyze",
     "",
     )
-
 st.write(f'You wrote {len(txt)} characters.')
+
+system_prompt = st.text_area(
+    "System prompt (Optional)",
+    "",
+    )
+
 
 send, right_column = st.columns(2)
 
@@ -36,3 +48,7 @@ if send.button('Send'):
 
 
 
+####Sidebar######
+st.sidebar.title("Choose Input")
+loaded_inputs = st.sidebar.selectbox("Select Loaded Data", ('summary.csv', 'book.txt'))
+st.session_state['choosen_input'] = loaded_inputs

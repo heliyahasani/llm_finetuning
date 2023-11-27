@@ -1,11 +1,13 @@
 {
-    "micro_batch_size": 1,
-    "model_name": "m1",
-    "tokenizer_name": "t1",
-    "epochs": 1,
-    "lora_r": 1,
     "max_sequence_length": 100,
+    "micro_batch_size": 1,
+    "epochs": 1,
     "learning_rate": 1e-05,
+    "lora_r": 1,
     "lora_alpha": 1,
-    "lora_dropout": 0.0
+    "lora_dropout": 0.0,
+    "model_name": "meta-llama/Llama-2-7b-chat-hf",
+    "tokenizer_name": "meta-llama/Llama-2-7b-chat-hf",
+    "gradient_accumulation_steps": 1,
+    "logging_steps": 5
 }
