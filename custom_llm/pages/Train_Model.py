@@ -2,6 +2,7 @@ import streamlit as st
 import time
 import json
 from train.train_model import ModelTrainer
+from train.hugging_face_api_request import ApiRequest
 
 st.markdown("# Training Hyperparameter Configuration🎈")
 
@@ -98,6 +99,17 @@ if selected_tokenizer == "Custom":
 else:
     st.session_state['tokenizer_name'] = selected_tokenizer
 
+####Choose input for training ######
+st.sidebar.title("Choose Input")
+loaded_inputs = st.sidebar.selectbox("Select Loaded Data", ('summary.csv', 'book.txt'))
+st.session_state['choosen_input'] = loaded_inputs
+
+## Trending models in Hugging Face
+st.sidebar.title("Trending models in Hugging Face")
+with st.sidebar:
+    st.write(ApiRequest(st.session_state['model_name']).leader_models())
+
+
 def write_config_to_file(config, filename="training_config.json"):
     try:
         with open(filename, 'w') as file:
@@ -129,14 +141,25 @@ train, right_column = st.columns(2)
 if train.button('Train'):
     config = get_training_config()
     write_config_to_file(config)
-    train.write('Starting to train the model...')
-    trainer = ModelTrainer(
-        training_config_path='/home/heliya/llm_finetuning/custom_llm/training_config.json',
-        secrets_path='/home/heliya/llm_finetuning/custom_llm/secrets.toml',
-        dataset_name='mlabonne/guanaco-llama2-1k',
-        output_dir='./results_1'
-    )
-    trainer.train()
+    request_model = ApiRequest(st.session_state['model_name']).check_availibility()
+    request_tokenizer = ApiRequest(st.session_state['tokenizer_name']).check_availibility()
     
-    # Display a message when training is done
-    train.write("...and now we're done!")
+    st.write(request_model,st.session_state['model_name'])
+    st.write(request_tokenizer,st.session_state['tokenizer_name'])
+    
+    if (request_model == 200 and request_tokenizer == 200):
+        st.write("Model and tokenizer found successfuly")
+        train.write('Starting to train the model...')
+        trainer = ModelTrainer(
+            training_config_path='/home/heliya/llm_finetuning/custom_llm/training_config.json',
+            secrets_path='/home/heliya/llm_finetuning/custom_llm/secrets.toml',
+            dataset_name= st.session_state['choosen_input'], #'mlabonne/guanaco-llama2-1k',
+            output_dir='./results_1'
+        )
+        trainer.train()
+        
+        # Display a message when training is done
+        train.write("...and now we're done!")
+    else:
+        st.write("Model or tokenizer NOT found try again.")
+
