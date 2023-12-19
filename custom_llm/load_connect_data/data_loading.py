@@ -10,11 +10,16 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 import boto3
 import awswrangler as wr
+from google.cloud import storage
+from pathlib import Path
+import tempfile
+from datasets import Dataset
 
-st.markdown("# Load or Connect Your Data")
+
+st.markdown("# Load Data")
 
 # Load the TOML file
-with open('secrets.toml', 'r') as file:
+with open(r'C:\Users\HH\Desktop\project\llm_finetuning\custom_llm\secrets.toml', 'r') as file:
     secrets = toml.load(file)
 section_names = secrets.keys()
 
@@ -34,6 +39,7 @@ def connect_postgres(secrets, section, query):
         df = pd.DataFrame(results, columns=column_names)
         st.write(df.head(10))
         handle_saved_query(secrets, section, query)
+        return df
     except psycopg2.Error as e:
         st.error(f"Error connecting to PostgreSQL: {e}")
     finally:
@@ -55,6 +61,8 @@ def connect_mysql(secrets, section, query):
         df = pd.DataFrame(results, columns=column_names)
         st.write(df.head(10))
         handle_saved_query(secrets, section, query)
+        return df
+
     except Error as e:
         st.error(f"Error while connecting to MySQL: {e}")
     finally:
@@ -63,7 +71,11 @@ def connect_mysql(secrets, section, query):
             connection.close()
 
 def connect_bigquery(secrets, section, query):
-    credentials = service_account.Credentials.from_service_account_file(secrets[section]["service_account_json_path"])
+ # Convert the dictionary to a JSON string
+    credentials_json = json.dumps(secrets[section]["service_account_key"])
+    # Create credentials from the JSON string
+    credentials = service_account.Credentials.from_service_account_info(json.loads(credentials_json))
+    # Create a client using the credentials
     client = bigquery.Client(credentials=credentials, project=secrets[section]["project_id"])
     schema = secrets[section]["schema"]
     table = secrets[section]["table"]
@@ -71,11 +83,40 @@ def connect_bigquery(secrets, section, query):
     query_job = client.query(query)
     df = query_job.to_dataframe()
     st.write(df.head(10))
+    return df
 
+    
+def connect_bucket(secrets, section):
+    try:
+        # Convert the dictionary to a JSON string
+        credentials_json = json.dumps(secrets[section]["service_account_key"])
+        # Create credentials from the JSON string
+        credentials = service_account.Credentials.from_service_account_info(json.loads(credentials_json))
+        # Create a client using the credentials
+        client = storage.Client(credentials=credentials)
+        bucket = client.get_bucket(secrets[section]["bucket_name"])
+        # Get the blob (object) from the bucket
+        blob = bucket.blob(secrets[section]["object_name"])
+        # Create a temporary file to store the downloaded data
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as temp_file:
+            # Download the blob data to the temporary file
+            blob.download_to_file(temp_file)
+        
+        # Read the temporary CSV file into a DataFrame
+        df = pd.read_csv(temp_file.name)
+        st.write(df.head(10))
+        return df
+
+    except Exception as e:
+        st.write(f"Error: {e}")
+
+    
 def connect_aws(secrets, section):
     boto3.setup_default_session(aws_access_key_id=secrets[section]["aws_access_key_id"], aws_secret_access_key=secrets[section]["aws_secret_access_key"], region_name=secrets[section]["region"])
     df = wr.s3.read_csv(f's3://{secrets[section]["bucket"]}/{secrets[section]["data_path"]}')
     st.write(df.head(10))
+    return df
+
 
 def handle_saved_query(secrets, section, query):
     saved_query = st.selectbox("Would you like to save those as a data source?", ["Yes", "No"], key=f"{section}_saved_query")
@@ -85,45 +126,33 @@ def handle_saved_query(secrets, section, query):
             toml.dump(secrets, file)
             
 def handle_local_files():
-    local_directory = "/tmp/llm"
-    os.makedirs(local_directory, exist_ok=True)
     uploaded_file = st.file_uploader("Choose a file")
+    
     if uploaded_file is not None:
-        local_file_path = os.path.join(local_directory, uploaded_file.name)
-        with open(local_file_path, 'wb') as file:
-            file.write(uploaded_file.getvalue())
-        st.success(f"File '{uploaded_file.name}' has been saved locally at {local_file_path}")
+        df = load_file_to_dataframe(uploaded_file)
+        st.write(df.head(10))  # Display the first 10 rows of the DataFrame
+        return df
+
+def load_file_to_dataframe(file):
+    # Determine the file type from the extension
+    file_extension = file.name.split('.')[-1]
+    
+    # Read the file based on its file type
+    if file_extension == 'csv':
+        df = pd.read_csv(file)
+    elif file_extension == 'parquet':
+        df = pd.read_parquet(file)
+    elif file_extension in ['txt', 'log']:
+        df = pd.read_csv(file, header=None, names=['data'])
+    elif file_extension in ['xlsx', 'xls']:
+        df = pd.read_excel(file)
+    elif file_extension == 'json':
+        df = pd.read_json(file)
+    else:
+        st.write("Unexpected file extension.")
+        df = None
+    
+    return df
 
 
-load_data = st.selectbox("Where to load data?", ["Local", "AWS", "GCP", "Postgres", "MySQL"])
-
-if load_data == "Local":
-    handle_local_files()
-elif load_data == "AWS":
-    configuration = st.selectbox("Which configuration would you like to use ?", [section for section in section_names if "aws" in section], key="aws_configuration")
-    connect_aws(secrets, configuration)
-elif load_data == "GCP":
-    configuration = st.selectbox("Which configuration would you like to use ?", [section for section in section_names if "gcp" in section], key="gcp_configuration")
-    query = st.text_input("Enter your query", key="query")
-    run = st.button("Run", type="primary")
-    if run and configuration in secrets:
-        connect_bigquery(secrets, configuration, query=query)
-    elif run:
-        st.error(f"Configuration '{configuration}' not found in secrets.")
-elif load_data == "Postgres":
-    configuration = st.selectbox("Which configuration would you like to use ?", [section for section in section_names if "sql" in section and secrets[section].get("db_type") == "PostgreSQL"], key="postgres_configuration")
-    query = st.text_input("Enter your query", key="query")
-    run = st.button("Run", type="primary")
-    if run and configuration in secrets:
-        connect_postgres(secrets, configuration, query=query)
-    elif run:
-        st.error(f"Configuration '{configuration}' not found in secrets.")
-elif load_data == "MySQL":
-    configuration = st.selectbox("Which configuration would you like to use ?", [section for section in section_names if "sql" in section and secrets[section]["db_type"] == "MySQL"], key="mysql_configuration")
-    query = st.text_input("Enter your query", key="query")
-    run = st.button("Run", type="primary")
-    if run and configuration in secrets:
-        connect_mysql(secrets, configuration, query=query)
-    elif run:
-        st.error(f"Configuration '{configuration}' not found in secrets.")
 

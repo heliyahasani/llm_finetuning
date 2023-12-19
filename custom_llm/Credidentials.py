@@ -1,4 +1,5 @@
 import streamlit as st
+import json
 import toml
 
 st.markdown("# Load Credentials 🔑")
@@ -30,6 +31,7 @@ def update_secrets_file(updated_data):
     # Write the updated secrets to the TOML file
     with open('secrets.toml', 'w') as file:
         toml.dump(existing_secrets, file)
+        
 
 # Function to collect form data
 def collect_form_data(form_name):
@@ -54,18 +56,41 @@ def collect_form_data(form_name):
             "bucket": st.text_input("Bucket", key=f"{form_name}_bucket"),
             "data_path":st.text_input("Data Path", key=f"{form_name}_data_path")
         }
-    elif form_name == "GCP":
+    elif form_name == "GCP BIGQUERY":
         data = {
-            "service_account_json_path": st.text_input("Service Account JSON Path", key=f"{form_name}_service_account_json_path"),
+            "type": "BigQuery",
             "project_id": st.text_input("Project ID", key=f"{form_name}_project_id"),
             "schema": st.text_input("Schema", key=f"{form_name}_schema"),
             "table": st.text_input("Table", key=f"{form_name}_table")
         }
+         # File uploader for service account JSON
+        uploaded_file = st.file_uploader("Upload Service Account JSON", type="json", key=f"{form_name}_service_account_file")
+        if uploaded_file is not None:
+            # Read the JSON file
+            service_account_info = json.load(uploaded_file)
+            # Store the service account info in the data dictionary
+            data["service_account_key"] = service_account_info
+    elif form_name == "GCP BUCKETS":
+        data = {
+            "type": "Buckets",
+            "project_id": st.text_input("Project ID", key=f"{form_name}_project_id"),
+            "bucket_name": st.text_input("Bucket Name", key=f"{form_name}_bucket_name"),
+            "object_name": st.text_input("Object Name", key=f"{form_name}_object_name")
+        }
+         # File uploader for service account JSON
+        uploaded_file = st.file_uploader("Upload Service Account JSON", type="json", key=f"{form_name}_service_account_file")
+        if uploaded_file is not None:
+            # Read the JSON file
+            service_account_info = json.load(uploaded_file)
+            # Store the service account info in the data dictionary
+            data["service_account_key"] = service_account_info
+            
+    
 
     return {f"{form_name.lower()}.{subsection_name}": data}
 
 # Process each form
-for form_name in ["SQL", "AWS", "GCP"]:
+for form_name in ["SQL", "AWS", "GCP BIGQUERY","GCP BUCKETS"]:
     with st.form(f"{form_name.lower()}_connection_form"):
         form_data = collect_form_data(form_name)
         submitted = st.form_submit_button(f"Submit {form_name}")
