@@ -19,7 +19,7 @@ from datasets import Dataset
 st.markdown("# Load Data")
 
 # Load the TOML file
-with open(r'C:\Users\HH\Desktop\project\llm_finetuning\custom_llm\secrets.toml', 'r') as file:
+with open(r'/home/heliya/llm_finetuning/custom_llm/secrets.toml', 'r') as file:
     secrets = toml.load(file)
 section_names = secrets.keys()
 
@@ -39,7 +39,9 @@ def connect_postgres(secrets, section, query):
         df = pd.DataFrame(results, columns=column_names)
         st.write(df.head(10))
         handle_saved_query(secrets, section, query)
-        return df
+        column = st.selectbox("Which column should be used for inference?", df.columns)
+        df = df.rename(columns={column: "text"})
+        return df[[column]]
     except psycopg2.Error as e:
         st.error(f"Error connecting to PostgreSQL: {e}")
     finally:
@@ -61,7 +63,9 @@ def connect_mysql(secrets, section, query):
         df = pd.DataFrame(results, columns=column_names)
         st.write(df.head(10))
         handle_saved_query(secrets, section, query)
-        return df
+        column = st.selectbox("Which column should be used for inference?", df.columns)
+        df = df.rename(columns={column: "text"})
+        return df[["text"]]
 
     except Error as e:
         st.error(f"Error while connecting to MySQL: {e}")
@@ -83,9 +87,10 @@ def connect_bigquery(secrets, section, query):
     query_job = client.query(query)
     df = query_job.to_dataframe()
     st.write(df.head(10))
-    return df
+    column = st.selectbox("Which column should be used for inference?", df.columns)
+    df = df.rename(columns={column: "text"})
+    return df[["text"]]
 
-    
 def connect_bucket(secrets, section):
     try:
         # Convert the dictionary to a JSON string
@@ -105,8 +110,10 @@ def connect_bucket(secrets, section):
         # Read the temporary CSV file into a DataFrame
         df = pd.read_csv(temp_file.name)
         st.write(df.head(10))
-        return df
-
+        column = st.selectbox("Which column should be used for inference?", df.columns)
+        df = df.rename(columns={column: "text"})
+        return df[["text"]]
+    
     except Exception as e:
         st.write(f"Error: {e}")
 
@@ -115,8 +122,9 @@ def connect_aws(secrets, section):
     boto3.setup_default_session(aws_access_key_id=secrets[section]["aws_access_key_id"], aws_secret_access_key=secrets[section]["aws_secret_access_key"], region_name=secrets[section]["region"])
     df = wr.s3.read_csv(f's3://{secrets[section]["bucket"]}/{secrets[section]["data_path"]}')
     st.write(df.head(10))
-    return df
-
+    column = st.selectbox("Which column should be used for inference?", df.columns)
+    df = df.rename(columns={column: "text"})
+    return df[["text"]]
 
 def handle_saved_query(secrets, section, query):
     saved_query = st.selectbox("Would you like to save those as a data source?", ["Yes", "No"], key=f"{section}_saved_query")
@@ -131,28 +139,25 @@ def handle_local_files():
     if uploaded_file is not None:
         df = load_file_to_dataframe(uploaded_file)
         st.write(df.head(10))  # Display the first 10 rows of the DataFrame
-        return df
+        column = st.selectbox("Which column should be used for inference?", df.columns)
+        df = df.rename(columns={column: "text"})
+        return df[["text"]]
 
+       
 def load_file_to_dataframe(file):
     # Determine the file type from the extension
     file_extension = file.name.split('.')[-1]
     
     # Read the file based on its file type
     if file_extension == 'csv':
-        df = pd.read_csv(file)
+        return pd.read_csv(file)
     elif file_extension == 'parquet':
-        df = pd.read_parquet(file)
+        return pd.read_parquet(file)
     elif file_extension in ['txt', 'log']:
-        df = pd.read_csv(file, header=None, names=['data'])
+        return pd.read_csv(file, header=None, names=['data'])
     elif file_extension in ['xlsx', 'xls']:
-        df = pd.read_excel(file)
+        return pd.read_excel(file)
     elif file_extension == 'json':
-        df = pd.read_json(file)
+        return pd.read_json(file)
     else:
         st.write("Unexpected file extension.")
-        df = None
-    
-    return df
-
-
-

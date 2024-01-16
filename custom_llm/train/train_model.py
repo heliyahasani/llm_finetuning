@@ -1,8 +1,9 @@
 import json
 import toml
 import torch
+import pandas as pd
 import transformers
-from datasets import load_dataset
+from datasets import Dataset, load_dataset
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig, AutoTokenizer, TrainingArguments
 from peft import LoraConfig, prepare_model_for_kbit_training, get_peft_model
 from trl import SFTTrainer
@@ -24,10 +25,18 @@ class ModelTrainer:
             self.secrets = toml.load(file)
 
     def load_dataset(self):
-        self.dataset = load_dataset(self.dataset_name, split="train")
+        if isinstance(self.dataset_name, pd.DataFrame):
+            # Convert DataFrame to Hugging Face Dataset
+            self.dataset = Dataset.from_pandas(self.dataset_name)
+        elif isinstance(self.dataset_name, Dataset):
+            # Use the Hugging Face Dataset directly
+            self.dataset = self.dataset_name
+        else:
+            # Load dataset from Hugging Face datasets library
+            self.dataset = load_dataset(self.dataset_name, split="train")
 
     def prepare_model(self):
-        hf_auth = self.secrets["hugging_face_token"]
+        hf_auth = self.secrets["api_keys"]["hugging_face_token"]
         
         model_config = transformers.AutoConfig.from_pretrained(
             self.training_config["model_name"],
