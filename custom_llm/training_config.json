@@ -1,13 +1,14 @@
 {
-    "max_sequence_length": 469,
-    "micro_batch_size": 7,
-    "epochs": 75,
-    "learning_rate": 0.15912,
-    "lora_r": 4,
-    "lora_alpha": 5,
-    "lora_dropout": 0.09,
+    "max_sequence_length": 100,
+    "micro_batch_size": 1,
+    "epochs": 1,
+    "learning_rate": 0.08412,
+    "lora_r": 15,
+    "lora_alpha": 47,
+    "lora_dropout": 0.18,
     "model_name": "meta-llama/Llama-2-7b-chat-hf",
     "tokenizer_name": "meta-llama/Llama-2-7b-chat-hf",
-    "gradient_accumulation_steps": 26,
-    "logging_steps": 245
+    "quantazation": "4-bit",
+    "gradient_accumulation_steps": 234,
+    "logging_steps": 415
 }

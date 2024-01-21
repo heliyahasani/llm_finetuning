@@ -14,9 +14,6 @@ import torch
 import os
 torch.cuda.empty_cache()
 gc.collect()
-
-
-
     
 st.markdown("# Training Hyperparameter Configuration🎈")
 # Load the TOML file
@@ -73,6 +70,7 @@ elif load_data == "MySQL":
             st.session_state['choosen_input'] = Dataset.from_pandas(df)    
     elif run:
         st.error(f"Configuration '{configuration}' not found in secrets.")
+
 # Initialize session state variables
 params = {
     "max_sequence_length": 100,
@@ -91,10 +89,12 @@ for key, default_value in params.items():
         
 # Initialize session state for model and tokenizer
 if 'model_name' not in st.session_state:
-    st.session_state['model_name'] = 'mistralai/Mistral-7B-v0.1'  # Default model
+    st.session_state['model_name'] = None # Default model
 if 'tokenizer_name' not in st.session_state:
-    st.session_state['tokenizer_name'] = 'mistralai/Mistral-7B-v0.1'  # Default tokenizer
-        
+    st.session_state['tokenizer_name'] = None # Default tokenizer
+if 'quantazation' not in st.session_state:
+    st.session_state['quantazation'] = None # Default quantazation
+
 if 'input_changed' not in st.session_state:
     st.session_state['input_changed'] = False
 
@@ -148,7 +148,7 @@ if 'input_changed' in st.session_state and st.session_state['input_changed']:
 ####Sidebar######
 # Create the main sidebar
 st.sidebar.title("Model & Tokenizer")
-selected_model = st.sidebar.selectbox("Select a Model", ('meta-llama/Llama-2-7b-chat-hf', 'adept/fuyu-8b', '01-ai/Yi-34B','mistralai/Mistral-7B-v0.1','Custom'))
+selected_model = st.sidebar.selectbox("Select a Model", ('meta-llama/Llama-2-7b-chat-hf', 'adept/fuyu-8b', '01-ai/Yi-34B','mistralai/Mixtral-8x7B-Instruct-v0.1','Custom'))
 # Add a selectbox to the sidebar:
 if selected_model == "Custom":
     # Custom model input
@@ -158,13 +158,17 @@ else:
     st.session_state['model_name'] = selected_model
 
 # Tokenizer selection
-selected_tokenizer = st.sidebar.selectbox("Select a Tokenizer", ('meta-llama/Llama-2-7b-chat-hf', 'adept/fuyu-8b', '01-ai/Yi-34B','mistralai/Mistral-7B-v0.1','Custom'))
+selected_tokenizer = st.sidebar.selectbox("Select a Tokenizer", ('meta-llama/Llama-2-7b-chat-hf', 'adept/fuyu-8b', '01-ai/Yi-34B','mistralai/Mixtral-8x7B-Instruct-v0.1','Custom'))
 if selected_tokenizer == "Custom":
     # Custom tokenizer input
     custom_tokenizer = st.sidebar.text_input("Custom tokenizer name", key="custom_tokenizer_input")
     st.session_state['tokenizer_name'] = custom_tokenizer
 else:
     st.session_state['tokenizer_name'] = selected_tokenizer
+
+# Quantazation selection
+selected_quantazation = st.sidebar.selectbox("Quantazation", (None,'4-bit','8-bit'))
+st.session_state['quantazation'] = selected_quantazation
 
 
 ## Trending models in Hugging Face
@@ -218,6 +222,7 @@ def get_training_config():
         "lora_dropout": st.session_state["lora_dropout"],
         "model_name":st.session_state['model_name'],
         "tokenizer_name":st.session_state['tokenizer_name'],
+        "quantazation":st.session_state['quantazation'] ,
         "gradient_accumulation_steps":st.session_state['gradient_accumulation_steps'],
         "logging_steps":st.session_state['logging_steps'],   
     }

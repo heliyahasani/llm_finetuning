@@ -42,11 +42,21 @@ class ModelTrainer:
             self.training_config["model_name"],
             use_auth_token=True
         )
-        bnb_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.float16,
-        )
+        
+        if self.training_config['quantazation'] == '4-bit':
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.float16,
+            )
+        elif self.training_config['quantazation'] == '8-bit':
+            bnb_config = BitsAndBytesConfig(
+                load_in_8bit=True,
+                bnb_8bit_quant_type="int8",  # Adjust the 8-bit quantization type as needed
+            )
+        else:
+            bnb_config = None
+        
         device_map = {"": 0}
         self.base_model = AutoModelForCausalLM.from_pretrained(
             self.training_config["model_name"],

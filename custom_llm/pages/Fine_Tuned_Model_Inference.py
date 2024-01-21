@@ -1,6 +1,5 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import streamlit as st
-from inference.inference import Model
 from load_connect_data.get_fine_tuned_weights import upload_adapters_aws,upload_adapters_gcp,upload_adapters_local
 import torch
 from train.hugging_face_api_request import ApiRequest
@@ -110,7 +109,6 @@ send, right_column = st.columns(2)
 
 # Handle user interaction when the "Send" button is clicked
 if send.button('Send'):
-    model = Model(st.session_state['model_name'])
     answer = model.generate(txt)
 
     # Display the answer

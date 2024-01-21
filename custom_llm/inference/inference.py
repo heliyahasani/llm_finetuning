@@ -1,5 +1,6 @@
 from vllm import LLM, SamplingParams
 import torch
+import os
 torch.cuda.empty_cache()
 
 class Model:
@@ -29,7 +30,7 @@ If a question does not make any sense or is not factually coherent, explain why 
         sampling_params = SamplingParams(
             temperature=0.75,
             top_p=1,
-            max_tokens=800,
+            max_tokens=400,
             llm=self.llm if self.quantization is None else LLM(model=self.model_name, quantization=self.quantization)
         )
 
